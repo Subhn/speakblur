@@ -5,9 +5,9 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "dev": "node server.js",   
-    "start": "node server.js", 
-    "client": "vite",          
+    "dev": "node server.js",
+    "start": "node server.js",
+    "client": "vite",
     "build": "vite build",
     "test": "npm run format:check && tsc && nyc mocha --require ts-node/register test/*.ts",
     "format:check": "prettier --parser typescript --check 'lib/**/*.ts' 'test/**/*.ts'",
@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "socket.io": "^4.7.4"
   },
