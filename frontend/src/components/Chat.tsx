@@ -24,7 +24,7 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
   const socketRef = useRef<Socket>();
 
   useEffect(() => {
-    socketRef.current = io('https://speakblur-1.onrender.com', {
+    socketRef.current = io('https://speakblur.onrender.com', {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
