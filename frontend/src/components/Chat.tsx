@@ -24,7 +24,7 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
   const socketRef = useRef<Socket>();
 
   useEffect(() => {
-    socketRef.current = io('http://localhost:3000', {
+    socketRef.current = io('speakblur.vercel.app', {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
