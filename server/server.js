@@ -4,77 +4,115 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 
 const app = express();
-app.use(cors());
-app.use(express.json());
-
-// Basic route for API health check
-app.get('/', (req, res) => {
-  res.json({ status: 'ok', message: 'SpeakBlur API is running' });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ status: 'error', message: 'Something went wrong!' });
-});
-
-// Handle 404
-app.use((req, res) => {
-  res.status(404).json({ status: 'error', message: 'Not Found' });
-});
-
 const server = createServer(app);
+
 const io = new Server(server, {
   cors: {
-    origin: "https://speakblur1.netlify.app/", // Vite's default development port
-    methods: ["GET", "POST"],
-    credentials: true
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"]
   }
 });
 
+app.use(cors({
+  origin: "http://localhost:5173",
+  methods: ["GET", "POST"]
+}));
+
 const users = new Map();
+const messages = [];
 
 io.on('connection', (socket) => {
-  console.log('User connected');
+  console.log('A user connected:', socket.id);
 
-  // Send initial users count
-  io.emit('users_count', users.size);
+  socket.emit('previousMessages', messages);
 
   socket.on('join', (username) => {
+    console.log('User joined:', username);
     users.set(socket.id, username);
-    io.emit('users_count', users.size);
-    io.emit('message', {
+    
+    io.emit('userCount', users.size);
+    const joinMessage = {
       id: Date.now().toString(),
-      text: `${username} has joined the chat`, // ✅ Corrected template literal
+      text: `${username} has joined the chat`,
       username: 'System',
       timestamp: Date.now()
-    });
+    };
+    messages.push(joinMessage);
+    io.emit('message', joinMessage);
   });
 
   socket.on('message', (message) => {
+    console.log('Message received:', message);
+    messages.push(message);
     io.emit('message', message);
   });
 
+  socket.on('messageUpdate', (updatedMessage) => {
+    const index = messages.findIndex(m => m.id === updatedMessage.id);
+    if (index !== -1) {
+      messages[index] = updatedMessage;
+      io.emit('messageUpdate', updatedMessage);
+    }
+  });
+
+  socket.on('reaction', ({ messageId, emoji, username }) => {
+    const message = messages.find(m => m.id === messageId);
+    if (message) {
+      if (!message.reactions) {
+        message.reactions = {};
+      }
+      if (!message.reactions[emoji]) {
+        message.reactions[emoji] = [];
+      }
+      
+      const userIndex = message.reactions[emoji].indexOf(username);
+      if (userIndex === -1) {
+        message.reactions[emoji].push(username);
+      } else {
+        message.reactions[emoji].splice(userIndex, 1);
+        if (message.reactions[emoji].length === 0) {
+          delete message.reactions[emoji];
+        }
+      }
+      
+      io.emit('messageUpdate', message);
+    }
+  });
+
   socket.on('leave', (username) => {
+    console.log('User left:', username);
     users.delete(socket.id);
-    io.emit('users_count', users.size);
-    io.emit('user_left', username);
+    io.emit('userCount', users.size);
+    const leaveMessage = {
+      id: Date.now().toString(),
+      text: `${username} has left the chat`,
+      username: 'System',
+      timestamp: Date.now()
+    };
+    messages.push(leaveMessage);
+    io.emit('message', leaveMessage);
   });
 
   socket.on('disconnect', () => {
     const username = users.get(socket.id);
     if (username) {
+      console.log('User disconnected:', username);
       users.delete(socket.id);
-      io.emit('users_count', users.size);
-      io.emit('user_left', username);
+      io.emit('userCount', users.size);
+      const disconnectMessage = {
+        id: Date.now().toString(),
+        text: `${username} has left the chat`,
+        username: 'System',
+        timestamp: Date.now()
+      };
+      messages.push(disconnectMessage);
+      io.emit('message', disconnectMessage);
     }
-    console.log('User disconnected');
   });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`); // ✅ Corrected template literal
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+  console.log(`WebSocket server is ready`);
 });
-
-export default server;

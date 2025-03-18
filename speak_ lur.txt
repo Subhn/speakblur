@@ -1,0 +1,30 @@
+project name : speakblur - an anonymous , simple chat application.
+
+Core Features:
+
+1)use a nickname to login (no authentication required)
+2)its a realtime chat environment that allows all the online users to send messages in real time
+2)just a basic text box for sending messages without any limit (only text )
+
+Pages:
+
+1)welcome page with speakblur as title and login or enter button
+2)the chatting page, with all usernames and their messages towards left and self messages towards right
+2)a counter above showing no of online users in the both pages
+4)when users quits the chat with exit button , a return back message
+
+User Flow:
+
+The user lands on the home page and enters a nickname/usernae to enter the chat and chats with group of people in real time and later quits the app.
+
+UI/UX:
+
+Clean, minimal design with a light color scheme preferably light pink showing love .
+use attractive fonts and images on landing pages.
+
+technologies:
+vite 
+react
+
+depoyment:
+vercel 
