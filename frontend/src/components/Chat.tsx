@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, LogOut, Reply, Smile, BarChart as ChartBar, X } from 'lucide-react';
-import EmojiPicker from 'emoji-picker-react';
 import { Message, PollOption } from '../types';
 import { io, Socket } from 'socket.io-client';
 
@@ -23,8 +22,11 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket>();
 
+  // Define a set of 5 love-themed emojis
+  const quickEmojis = ['❤️', '😍', '🥰', '💕', '💖'];
+
   useEffect(() => {
-    socketRef.current = io('https://speakblur.onrender.com', {
+    socketRef.current = io('http://localhost:3000', {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
@@ -53,6 +55,7 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
     });
 
     socketRef.current.on('userCount', (count: number) => {
+      console.log('Received user count:', count);
       setOnlineUsers(count);
     });
 
@@ -73,6 +76,13 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
       }
     };
   }, [username, setOnlineUsers]);
+
+  // Added an effect to handle user count updates
+  useEffect(() => {
+    if (socketRef.current && isConnected) {
+      socketRef.current.emit('requestUserCount');
+    }
+  }, [isConnected]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -153,12 +163,20 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
     onExit();
   };
 
+  // FIX: Modified to prevent scrolling when inputs are in focus
+  const handlePollOptionChange = (index: number, value: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const newOptions = [...pollOptions];
+    newOptions[index] = value;
+    setPollOptions(newOptions);
+  };
+
   const renderPollOptions = (message: Message) => {
     if (!message.isPoll || !message.pollOptions) return null;
     return (
       <div className="mt-3 space-y-2">
         {message.pollOptions.map(option => {
-          const totalVotes = option.votes.length;
+          const totalVotes = message.pollOptions?.reduce((sum, opt) => sum + opt.votes.length, 0) || 0;
           const hasVoted = option.votes.includes(username);
           const percentage = totalVotes > 0 ? (option.votes.length / totalVotes) * 100 : 0;
           
@@ -167,11 +185,11 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
               key={option.id}
               onClick={() => handleVote(message.id, option.id)}
               className={`w-full p-2 rounded-lg relative overflow-hidden ${
-                hasVoted ? 'bg-[#DCF8C6]' : 'bg-gray-100'
+                hasVoted ? 'bg-pink-100' : 'bg-gray-50'
               }`}
             >
               <div
-                className="absolute top-0 left-0 bottom-0 bg-[#25D366] opacity-20"
+                className="absolute top-0 left-0 bottom-0 bg-pink-400 opacity-20"
                 style={{ width: `${percentage}%` }}
               />
               <div className="relative flex justify-between">
@@ -194,7 +212,7 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
             <button
               key={emoji}
               onClick={() => handleReaction(message.id, emoji)}
-              className="bg-[#DCF8C6] rounded-full px-2 py-1 text-sm hover:bg-[#c5e9b0]"
+              className="bg-pink-100 rounded-full px-2 py-1 text-sm hover:bg-pink-200 transition-colors"
             >
               {emoji} {users.length}
             </button>
@@ -212,19 +230,28 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#E5DDD5]">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-pink-50 to-red-50">
       {/* Header */}
-      <div className="bg-[#128C7E] shadow-sm">
+      <div className="bg-gradient-to-r from-pink-500 to-rose-500 shadow-md sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-white">SpeakBlur</h2>
-            <p className="text-sm text-white/80 font-medium">
-              {isConnected ? `${onlineUsers} online` : 'Connecting...'}
+            <p className="text-sm text-white/90 font-medium">
+              {isConnected ? 
+                <span className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                  <span>{onlineUsers} {onlineUsers === 1 ? 'user' : 'users'} online</span>
+                </span> : 
+                <span className="flex items-center">
+                  <span className="inline-block w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
+                  <span>Connecting...</span>
+                </span>
+              }
             </p>
           </div>
           <button
             onClick={handleExit}
-            className="flex items-center gap-2 px-4 py-2 text-white/80 hover:text-white transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-white/90 hover:text-white transition-colors"
           >
             <LogOut size={20} />
             Exit
@@ -244,22 +271,22 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
             >
               <div className="relative group max-w-[80%]">
                 <div
-                  className={`rounded-lg p-4 shadow-sm ${
+                  className={`rounded-2xl p-4 shadow-sm ${
                     message.username === username
-                      ? 'bg-[#DCF8C6]'
+                      ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-gray-800'
                       : message.username === 'System'
-                      ? 'bg-gray-200'
+                      ? 'bg-gray-100'
                       : 'bg-white'
                   }`}
                 >
                   {message.replyTo && (
-                    <div className="text-sm opacity-75 mb-3 p-2 rounded bg-black/5 border-l-4 border-[#25D366]">
-                      <p className="text-xs mb-1 text-[#128C7E]">Replying to:</p>
+                    <div className="text-sm opacity-75 mb-3 p-2 rounded bg-white/50 border-l-4 border-pink-300">
+                      <p className="text-xs mb-1 text-pink-600">Replying to:</p>
                       {messages.find(m => m.id === message.replyTo)?.text}
                     </div>
                   )}
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="font-semibold text-[#128C7E]">
+                    <span className="font-semibold text-rose-600">
                       {message.username === username ? 'You' : message.username}
                     </span>
                     <span className="text-xs text-gray-500">
@@ -274,28 +301,39 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
                 <div className="absolute -bottom-4 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                   <button
                     onClick={() => setReplyingTo(message)}
-                    className="p-2 rounded-full bg-white shadow-md hover:bg-gray-50"
+                    className="p-2 rounded-full bg-white shadow-md hover:bg-gray-50 text-pink-500"
                   >
                     <Reply size={14} />
                   </button>
                   <button
                     onClick={() => {
-                      setSelectedMessageId(message.id);
-                      setShowEmojiPicker(!showEmojiPicker);
+                      setSelectedMessageId(prevId => prevId === message.id ? null : message.id);
+                      setShowEmojiPicker(prevState => !(prevState && selectedMessageId === message.id));
                     }}
-                    className="p-2 rounded-full bg-white shadow-md hover:bg-gray-50"
+                    className="p-2 rounded-full bg-white shadow-md hover:bg-gray-50 text-pink-500"
                   >
                     <Smile size={14} />
                   </button>
                 </div>
 
+                {/* FIX: Fixed emoji picker positioning */}
                 {showEmojiPicker && selectedMessageId === message.id && (
-                  <div className="absolute bottom-full right-0 mb-2 z-50">
-                    <EmojiPicker
-                      onEmojiClick={(emojiData) => handleReaction(message.id, emojiData.emoji)}
-                      width={300}
-                      height={400}
-                    />
+                  <div className={`absolute z-50 ${
+                    message.username === username 
+                      ? 'right-0 mb-2 bottom-full' 
+                      : 'left-0 mb-2 bottom-full'
+                  }`}>
+                    <div className="bg-white rounded-xl shadow-lg p-2 flex space-x-2 border border-pink-100">
+                      {quickEmojis.map(emoji => (
+                        <button
+                          key={emoji}
+                          onClick={() => handleReaction(message.id, emoji)}
+                          className="text-xl hover:bg-pink-50 p-2 rounded-full transition-colors"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -306,17 +344,17 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
       </div>
 
       {/* Message Input */}
-      <div className="bg-[#F0F2F5] border-t border-gray-200">
+      <div className="bg-white border-t border-pink-100 shadow-md">
         <form onSubmit={handleSend} className="max-w-6xl mx-auto p-4">
           {replyingTo && (
-            <div className="mb-3 p-2 bg-white rounded-lg flex justify-between items-center">
+            <div className="mb-3 p-2 bg-pink-50 rounded-lg flex justify-between items-center border border-pink-100">
               <span className="text-sm text-gray-600">
                 Replying to: {replyingTo.text}
               </span>
               <button
                 type="button"
                 onClick={() => setReplyingTo(null)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-pink-500"
               >
                 <X size={16} />
               </button>
@@ -324,38 +362,39 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
           )}
 
           {isPollMode && (
-            <div className="mb-3 space-y-2">
+            <div className="mb-3 space-y-2 bg-pink-50 p-4 rounded-lg border border-pink-100">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-gray-700">Create Poll</h3>
+                <h3 className="text-sm font-medium text-pink-700">Create Poll</h3>
                 <button
                   type="button"
                   onClick={() => {
                     setIsPollMode(false);
                     setPollOptions(['', '']);
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 hover:text-pink-500"
                 >
                   <X size={16} />
                 </button>
               </div>
+              {/* FIX: Added onFocus to prevent default scrolling behavior */}
               {pollOptions.map((option, index) => (
                 <input
                   key={index}
                   type="text"
                   value={option}
-                  onChange={(e) => {
-                    const newOptions = [...pollOptions];
-                    newOptions[index] = e.target.value;
-                    setPollOptions(newOptions);
-                  }}
+                  onChange={(e) => handlePollOptionChange(index, e.target.value, e)}
+                  onFocus={(e) => e.preventDefault()}
                   placeholder={`Option ${index + 1}`}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#128C7E] focus:border-transparent"
+                  className="w-full px-3 py-2 rounded-lg border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent"
                 />
               ))}
               <button
                 type="button"
-                onClick={() => setPollOptions([...pollOptions, ''])}
-                className="text-sm text-[#128C7E] hover:text-[#0e6d62]"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setPollOptions([...pollOptions, ''])
+                }}
+                className="text-sm text-pink-600 hover:text-pink-700"
               >
                 + Add Option
               </button>
@@ -363,7 +402,7 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
           )}
 
           <div className="flex items-end gap-2">
-            <div className="flex-1 bg-white rounded-2xl p-2">
+            <div className="flex-1 bg-pink-50 rounded-2xl p-2 border border-pink-100 shadow-sm">
               <input
                 type="text"
                 value={newMessage}
@@ -373,10 +412,9 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
                 disabled={!isConnected}
               />
               <div className="flex items-center gap-2 px-3">
-                
                 <button
                   type="button"
-                  className="text-gray-500 hover:text-[#128C7E]"
+                  className="text-pink-400 hover:text-pink-600 transition-colors"
                   onClick={() => setIsPollMode(!isPollMode)}
                 >
                   <ChartBar size={20} />
@@ -386,7 +424,7 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
             <button
               type="submit"
               disabled={!isConnected || (!newMessage.trim() && !isPollMode) || (isPollMode && pollOptions.filter(opt => opt.trim()).length < 2)}
-              className="bg-[#25D366] text-white p-4 rounded-full hover:bg-[#1ea952] transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-gradient-to-r from-pink-500 to-rose-500 text-white p-4 rounded-full hover:from-pink-600 hover:to-rose-600 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
             >
               <Send size={20} />
             </button>

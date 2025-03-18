@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { MessageCircle } from 'lucide-react';
+import { useState } from 'react';
 import Welcome from './components/Welcome';
 import Chat from './components/Chat';
 
