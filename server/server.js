@@ -11,13 +11,13 @@ const server = createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5174"],
+    origin: ["http://localhost:5174","https://speakblur.netlify.app/"],
     methods: ["GET", "POST"]
   }
 });
 
 app.use(cors({
-  origin: ["http://localhost:5174"],
+  origin: ["http://localhost:5174","https://speakblur.netlify.app/"],
   methods: ["GET", "POST"]
 }));
 

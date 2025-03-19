@@ -26,7 +26,7 @@ function Chat({ username, onExit, onlineUsers, setOnlineUsers }: ChatProps) {
   const quickEmojis = ['❤️', '😍', '🥰', '💕', '💖'];
 
   useEffect(() => {
-    socketRef.current = io('http://localhost:3000', {
+    socketRef.current = io('https://speakblur.onrender.com', {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
