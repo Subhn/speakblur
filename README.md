@@ -23,13 +23,21 @@ https://speakblur.netlify.app
 
 ## **Getting Started**
 
-### **Clone the Repository** ```bash
+### **Clone the Repository**
+ ```bash
 git clone https://github.com/Subhn/speakblur.git
+
 cd speakblur
+
 cd frontend
+
 npm install
 npm run dev
+
 #new terminal
+
 cd server
+
 npm install
+
 node server.js
